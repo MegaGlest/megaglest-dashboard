@@ -1,0 +1,122 @@
+<?php
+//      Copyright (C) 2012 Mark Vejvoda, Titus Tscharntke and Tom Reynolds
+//      The MegaGlest Team, under GNU GPL v3.0
+// ==============================================================
+
+	if ( !defined('INCLUSION_PERMITTED') || ( defined('INCLUSION_PERMITTED') && INCLUSION_PERMITTED !== true ) ) { die( 'This file must not be invoked directly.' ); }
+
+	# This function cleans out special characters
+	function clean_str( $text )
+	{  // tomreyn says: I'm afraid this function is more likely to cause to trouble than to fix stuff (you have mysql escaping and html escaping elsewhere where it makes more sense, but strip off < and > here already, but then you don't filter non-visible bytes here)
+		//$text=strtolower($text);
+		//$code_entities_match   = array('!','@','#','$','%','^','&','*','(',')','_','+','{','}','|','"','<','>','?','[',']','\\',';',"'",',','/','*','+','~','`','=');
+		//$code_entities_replace = array('','','','','','','','','','','','','','','','','','','','','');
+		$code_entities_match   = array('$','%','^','&','_','+','{','}','|','"','<','>','?','[',']','\\',';',"'",'/','+','~','`','=');
+		$code_entities_replace = array('','','','','','','','','','','','','');
+
+		$text = str_replace( $code_entities_match, $code_entities_replace, $text );
+		return $text;
+	}
+
+	function db_connect()
+	{
+		if (!is_null(Registry::$mysqliLink)) {
+			return Registry::$mysqliLink;
+		}
+
+		// Always use mysqli_connect (persistent connections are not supported this way in mysqli)
+		$linkid = mysqli_connect(MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE);
+
+		if (!$linkid) {
+			die('Database connection failed: ' . mysqli_connect_error());
+		}
+
+		Registry::$mysqliLink = $linkid;
+		return $linkid;
+	}
+
+	function db_disconnect( $linkid )
+	{
+		// note that mysql_close() only closes non-persistent connections
+		return mysqli_close( $linkid );
+	}
+
+	function get_localsubnet_ip_prefix()
+	{
+		// If this is supposed to match any RFC1918 or even any unroutable IP address space then this is far from complete. 
+		// Consider using something like the 'IANA Private list' provided at http://sites.google.com/site/blocklist/ instead. 
+		// The data in this list is a subset of what IANA makes available at http://www.iana.org/assignments/ipv4-address-space/ipv4-address-space.xhtml
+		// Note that you may want/need to add in the IPv6 equivalent, too: http://www.iana.org/assignments/ipv6-address-space/ipv6-address-space.xhtml
+		return "192.";
+	}
+
+	function get_external_ip()
+	{
+		return $_SERVER['SERVER_ADDR'];
+		//return "209.52.70.192";
+	}
+
+	function cleanupServerList()
+	{
+		// on a busy server, this function should be invoked by cron in regular intervals instead (one SQL query less for the script)
+		mysqli_query( Registry::$mysqliLink, 'DELETE FROM glestserver WHERE status <> 3 AND lasttime < DATE_add(NOW(), INTERVAL -1 minute);' );
+		//return mysqli_query( 'UPDATE glestserver SET status=\'???\' WHERE lasttime<DATE_add(NOW(), INTERVAL -2 minute);' );
+        }
+
+	function cleanupGameStats()
+	{
+                // Purge completed games that are less than x minutes in duration
+                mysqli_query( Registry::$mysqliLink, 'DELETE FROM glestserver WHERE status = 3 AND gameUUID in (SELECT gameUUID from glestgamestats where framesToCalculatePlaytime / 40 / 60 < ' . MAX_MINS_OLD_COMPLETED_GAMES . ');');
+
+                // Cleanup game stats for games that are purged
+                mysqli_query( Registry::$mysqliLink, 'DELETE FROM glestgamestats WHERE gameUUID NOT IN (SELECT gameUUID from glestserver);');
+                mysqli_query( Registry::$mysqliLink, 'DELETE FROM glestgameplayerstats WHERE gameUUID NOT IN (SELECT gameUUID from glestgamestats);');
+        }
+
+	function addLatestServer($remote_ip, $service_port, $serverTitle, $connectedClients, $networkSlots )
+	{
+		// insert the new server
+		$server = "$remote_ip:$service_port";
+		$players = "$connectedClients/$networkSlots";
+		mysqli_query( Registry::$mysqliLink, "INSERT INTO recent_servers (name, server, players) VALUES('$serverTitle', '$server', '$players')");
+
+		// make sure there are not too much servers
+		$count_query = mysqli_fetch_assoc(mysqli_query( Registry::$mysqliLink, "SELECT COUNT(*) as count FROM recent_servers"));
+		$count = (int) $count_query['count'];
+		$over = $count - MAX_RECENT_SERVERS;
+		mysqli_query( Registry::$mysqliLink, "DELETE FROM recent_servers ORDER BY id LIMIT $over");
+	}
+
+	function updateServer($remote_ip, $service_port, $serverTitle, $connectedClients, $networkSlots ) {
+		// find the id of the server to update
+		$server = "$remote_ip:$service_port";
+		$players = "$connectedClients/$networkSlots";
+		$find_query = mysqli_fetch_assoc(mysqli_query( Registry::$mysqliLink, "SELECT id FROM recent_servers WHERE server ='$server' ORDER BY id desc LIMIT 1"));
+		$id = (int) $find_query['id'];
+
+		// update it.
+		mysqli_query( Registry::$mysqliLink, "UPDATE recent_servers SET name='$serverTitle', players='$players' WHERE id=$id LIMIT 1");
+	}
+
+        function getTimeString($frames) {
+	        $framesleft = (int)$frames;
+                $updateFps = 40.0;
+
+	        $hours = (int)($frames / $updateFps / 3600.0);
+	        $framesleft = $framesleft - $hours * 3600 * $updateFps;
+	        $minutes = (int)($framesleft / $updateFps / 60.0);
+	        $framesleft = $framesleft - $minutes * 60 * $updateFps;
+	        $seconds = (int)($framesleft / $updateFps);
+
+	        $hourstr = $hours;
+	        if($hours < 10) $hourstr = "0" . $hourstr;
+
+	        $minutestr = $minutes;
+	        if($minutes < 10) $minutestr = "0" . $minutestr;
+
+	        $secondstr = $seconds;
+	        if($seconds < 10) $secondstr = "0" . $secondstr;
+
+	        return $hourstr . ":" . $minutestr . ":" . $secondstr;
+        }
+?>

@@ -1,0 +1,20 @@
+<?php
+$pdet = [
+    "david123"=>["country"=>"il"],
+    "alket"=>["country"=>"xk"],
+    "niti"=>["country"=>"xk"],
+    "Jammy"=>["country"=>"gb"],
+    "titi"=>["country"=>"de"],
+    "andy5995"=>["country"=>"us"],
+    "Issh"=>["country"=>"tz"],
+    "Zeo-Tripathi"=>["country"=>"in"],
+    "filux"=>["country"=>"pl"],
+    "typedef"=>["country"=>"de"],
+    "CuSToM94"=>["country"=>"eg"],
+    "MathuSum Mut"=>["country"=>"mt"],
+    "Derek"=>["country"=>"sk"],
+    "titison"=>["country"=>"de"],
+    "FruchtiHD"=>["country"=>"de"],
+    "andy123"=>["country"=>"de"],
+    "Jonnysche"=>["country"=>"de"],
+];
