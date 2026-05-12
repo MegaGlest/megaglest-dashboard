@@ -11,7 +11,7 @@
     </div>
     <?php
     $name = $db->real_escape_string($_GET['name']);
-    $name = filter_var($name, FILTER_SANITIZE_STRING);
+    $name = filter_var($name, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
     //$name = preg_replace("/[^a-zA-Z0-9]+/", "", $name);
     $json = file_get_contents('medals.json');
     $players = json_decode($json,true);

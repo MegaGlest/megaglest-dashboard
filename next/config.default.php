@@ -19,7 +19,7 @@ function secondsToTime($inputSeconds) {
     $days = floor($inputSeconds / $secondsInADay);
 
     // extract hours
-    $hourSeconds = $inputSeconds % $secondsInADay;
+    $hourSeconds = (int)$inputSeconds % $secondsInADay;
     $hours = floor($hourSeconds / $secondsInAnHour);
 
     // extract minutes
