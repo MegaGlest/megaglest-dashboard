@@ -14,7 +14,7 @@
       <div class="col-md-12">
         <?php
         $gameUUID  = $db->real_escape_string($_GET['uuid']);
-        $gameUUID = filter_var($gameUUID, FILTER_SANITIZE_STRING);
+        $gameUUID = filter_var($gameUUID, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
         $result = $db->query("SELECT * FROM glestserver WHERE gameUUID='$gameUUID' LIMIT 1");
         $row = $result->fetch_assoc();
